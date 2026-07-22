@@ -138,7 +138,8 @@ table tr:nth-child(even){background:#fafbfc}
       </div>
       <div id="atab-setting" class="hidden">
         <div class="card"><h3>报价表标题</h3><div class="row"><input id="setTitle" placeholder="门窗报价表"><button class="btn btn-blue btn-sm" onclick="saveTitle()">保存</button></div></div>
-        <div class="card"><h3>修改管理员密码</h3><div class="row"><input id="setPwd1" type="password" placeholder="新密码"><input id="setPwd2" type="password" placeholder="确认"><button class="btn btn-blue btn-sm" onclick="changePwd()">修改</button></div></div>
+        <div class="card"><h3>同步设置</h3><div style="font-size:12px;color:#999;margin-bottom:8px">填入GitHub令牌后，多设备数据实时同步</div><div class="row"><input id="setToken" placeholder="GitHub Token（ghp_开头）"><button class="btn btn-blue btn-sm" onclick="saveToken()">保存</button></div></div>
+        <div class="card" id="adminPwdCard"><h3>修改管理员密码</h3><div class="row"><input id="setPwd1" type="password" placeholder="新密码"><input id="setPwd2" type="password" placeholder="确认"><button class="btn btn-blue btn-sm" onclick="changePwd()">修改</button></div></div>
       </div>
     </div>
   </div>
@@ -179,19 +180,46 @@ function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,
 function fm(n){return Number(n||0).toFixed(2)}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
-let users=L('w_users',DEF.users);users.forEach(function(u){if(u.active===undefined)u.active=true});types=L('w_types',DEF.types),colors=L('w_colors',DEF.colors),title=L('w_title',DEF.title);
+let users=[],types=[],colors=[],title='';
 let cur=null,rows=[],etId=null;
+const GH_RAW='https://raw.githubusercontent.com/zhanghua-svg/door-quote-web/main/users.json';
+const GH_API='https://api.github.com/repos/zhanghua-svg/door-quote-web/contents/users.json';
+let ghToken=L('w_ghtoken','');
+
+// 从GitHub拉取最新用户数据
+function syncUsers(cb){
+  fetch(GH_RAW+'?t='+Date.now()).then(function(r){return r.json()}).then(function(data){
+    if(data&&data.users){users=data.users;users.forEach(function(u){if(u.active===undefined)u.active=true});S('w_users',users)}
+    cb()
+  }).catch(function(){users=L('w_users',DEF.users);cb()})
+}
+
+// 推送用户数据到GitHub
+function pushUsers(cb){
+  if(!ghToken){S('w_users',users);if(cb)cb();return}
+  fetch(GH_API,{headers:{Authorization:'token '+ghToken}}).then(function(r){return r.json()}).then(function(d){
+    var body={message:'更新用户数据',content:btoa(unescape(encodeURIComponent(JSON.stringify({users:users}))))};
+    if(d.sha)body.sha=d.sha;
+    return fetch(GH_API,{method:'PUT',headers:{Authorization:'token '+ghToken,'Content-Type':'application/json'},body:JSON.stringify(body)})
+  }).then(function(){S('w_users',users);if(cb)cb()}).catch(function(){S('w_users',users);if(cb)cb()})
+}
 
 function calc(f,a,p,q,m){var e=Math.max(a||0,m||0);try{var x=f.replace(/计费面积/g,String(e)).replace(/面积/g,String(a||0)).replace(/单价/g,String(p||0)).replace(/数量/g,String(q||0));if(!/^[\d\s+\-*/.()]+$/.test(x))return a*p*q;return Math.round(Function('"use strict";return ('+x+')')()*100)/100}catch(c){return a*p*q}}
 
-function doLogin(){var u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPwd').value,x=users.find(function(z){return z.username===u&&z.password===p});if(!x){alert('账号或密码错误');return}cur=x;document.getElementById('loginPage').style.display='none';document.getElementById('mainPage').classList.add('show');document.getElementById('topUser').textContent=(x.role==='admin'?'👑 ':'')+u;
+function doLogin(){var u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPwd').value;
+syncUsers(function(){
+  var x=users.find(function(z){return z.username===u&&z.password===p});
+  if(!x){alert('账号或密码错误');return}
+  cur=x;
+  document.getElementById('loginPage').style.display='none';document.getElementById('mainPage').classList.add('show');document.getElementById('topUser').textContent=(x.role==='admin'?'👑 ':'')+u;
 document.getElementById('adminMenu').classList.remove('hidden');
 document.getElementById('topTitle').textContent=title;
-// 非管理员隐藏用户管理
 document.getElementById('adminUserTab').classList.toggle('hidden',x.role!=='admin');
-// 禁用用户拦截
+document.getElementById('adminPwdCard').classList.toggle('hidden',x.role!=='admin');
 if(x.active===false){alert('该账号已被停用，请联系管理员');logout();return}
-switchTab('quote',document.querySelector('.menu span'))}
+loadUD();
+switchTab('quote',document.querySelector('.menu span'))
+})}
 function logout(){cur=null;rows=[];document.getElementById('loginPage').style.display='flex';document.getElementById('mainPage').classList.remove('show');document.getElementById('loginPwd').value=''}
 
 function switchTab(n,el){document.querySelectorAll('.menu>span').forEach(function(s){s.classList.remove('active')});if(el)el.classList.add('active');['quote','detail','history','admin'].forEach(function(t){document.getElementById('tab-'+t).classList.add('hidden')});document.getElementById('tab-'+n).classList.remove('hidden');if(n==='quote')rq();if(n==='history')rh();if(n==='admin')ra()}
@@ -207,29 +235,33 @@ function dr(i){if(confirm('删除？')){rows.splice(i,1);rq();rc2()}}
 function rc2(){var pm={};rows.forEach(function(r){var p=(r.position||'').trim();if(!p){r._seq='';return}if(!pm[p])pm[p]=Object.keys(pm).length+1;r._seq=pm[p]});var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});document.getElementById('quoteTotal').textContent='¥'+fm(s);rq()}
 
 function genQuote(){if(!rows.length){alert('请添加产品');return}document.getElementById('detailTitle').textContent=title;document.getElementById('detailBody').innerHTML=rows.map(function(r){return'<tr><td>'+(r._seq||'')+'</td><td>'+es(r.position)+'</td><td>'+es(r.productType)+'</td><td>'+r.width+'×'+r.height+'</td><td>'+es(r.color)+'</td><td>'+es(r.glass)+'</td><td>'+r.area+'</td><td>'+r.quantity+'</td><td>¥'+r.unitPrice+'</td><td>¥'+r.total+'</td><td>'+es(r.remark)+'</td></tr>'}).join('');var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});document.getElementById('detailTotal').textContent='¥'+fm(s);switchTab('detail',null)}
-function saveQuote(){var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});var q={_id:Date.now().toString(),title:title,projectName:document.getElementById('qProject').value,customerName:document.getElementById('qName').value,customerPhone:document.getElementById('qPhone').value,items:rows.map(function(r){return JSON.parse(JSON.stringify(r))}),finalTotal:s,createTime:Date.now()};var a=L('w_quotes',[]);a.unshift(q);S('w_quotes',a);alert('保存成功！');switchTab('history',document.querySelectorAll('.menu span')[1])}
+function saveQuote(){var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});var q={_id:Date.now().toString(),title:title,projectName:document.getElementById('qProject').value,customerName:document.getElementById('qName').value,customerPhone:document.getElementById('qPhone').value,items:rows.map(function(r){return JSON.parse(JSON.stringify(r))}),finalTotal:s,createTime:Date.now()};var a=L('w_quotes_'+cur.username,[]);a.unshift(q);S('w_quotes_'+cur.username,a);alert('保存成功！');switchTab('history',document.querySelectorAll('.menu span')[1])}
 function exportCSV(){var c='\uFEFF序号,位置,产品,宽,高,颜色,玻璃,面积,数量,单价,合计,备注\n';rows.forEach(function(r){c+=[r._seq||'',r.position||'',r.productType||'',r.width||'',r.height||'',r.color||'',r.glass||'',r.area||'',r.quantity||'',r.unitPrice||'',r.total||'',r.remark||''].join(',')+'\n'});var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});c+='\n,,,,,,,,,合计,'+s;navigator.clipboard.writeText(c).then(function(){alert('已复制！打开WPS/Excel粘贴')}).catch(function(){alert('复制失败')})}
 
-function rh(){var a=L('w_quotes',[]),d=document.getElementById('historyList');if(!a.length){d.innerHTML='<div style="text-align:center;padding:40px;color:#999">暂无记录</div>';return}d.innerHTML=a.map(function(q,i){return'<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div onclick="vh('+i+')" style="flex:1;cursor:pointer"><div style="font-weight:600">'+es(q.projectName||'未命名')+'</div><div style="font-size:12px;color:#999">'+new Date(q.createTime).toLocaleDateString()+' | '+(q.items||[]).length+'项 | '+es(q.customerName||'')+'</div></div><div style="font-size:18px;font-weight:700;color:#e74c3c;margin-right:10px">¥'+fm(q.finalTotal)+'</div><span style="cursor:pointer;font-size:20px;opacity:0.5" onclick="dh('+i+')">🗑️</span></div>'}).join('')}
-function vh(i){var q=L('w_quotes',[])[i];if(!q)return;document.getElementById('qProject').value=q.projectName||'';document.getElementById('qName').value=q.customerName||'';document.getElementById('qPhone').value=q.customerPhone||'';rows=(q.items||[]).map(function(r){r.id=r.id||id();return r});rq();switchTab('quote',document.querySelector('.menu span'))}
-function dh(i){if(!confirm('删除？'))return;var a=L('w_quotes',[]);a.splice(i,1);S('w_quotes',a);rh()}
+function rh(){var a=L('w_quotes_'+cur.username,[]),d=document.getElementById('historyList');if(!a.length){d.innerHTML='<div style="text-align:center;padding:40px;color:#999">暂无记录</div>';return}d.innerHTML=a.map(function(q,i){return'<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div onclick="vh('+i+')" style="flex:1;cursor:pointer"><div style="font-weight:600">'+es(q.projectName||'未命名')+'</div><div style="font-size:12px;color:#999">'+new Date(q.createTime).toLocaleDateString()+' | '+(q.items||[]).length+'项 | '+es(q.customerName||'')+'</div></div><div style="font-size:18px;font-weight:700;color:#e74c3c;margin-right:10px">¥'+fm(q.finalTotal)+'</div><span style="cursor:pointer;font-size:20px;opacity:0.5" onclick="dh('+i+')">🗑️</span></div>'}).join('')}
+function vh(i){var q=L('w_quotes_'+cur.username,[])[i];if(!q)return;document.getElementById('qProject').value=q.projectName||'';document.getElementById('qName').value=q.customerName||'';document.getElementById('qPhone').value=q.customerPhone||'';rows=(q.items||[]).map(function(r){r.id=r.id||id();return r});rq();switchTab('quote',document.querySelector('.menu span'))}
+function dh(i){if(!confirm('删除？'))return;var a=L('w_quotes_'+cur.username,[]);a.splice(i,1);S('w_quotes_'+cur.username,a);rh()}
 
 function ra(){rt();rc();ru();document.getElementById('setTitle').value=title}
 function rt(){document.getElementById('typeList').innerHTML=types.map(function(t){return'<div class="type-row"><div class="info"><div class="tname">'+es(t.name)+'</div><div class="tmeta">'+(t.defaultGlass?'<span>玻璃:'+es(t.defaultGlass)+'</span>':'')+(t.defaultColor?'<span>颜色:'+es(t.defaultColor)+'</span>':'')+(t.minArea>0?'<span>最低:'+t.minArea+'㎡</span>':'')+'<span>公式:'+es(t.formula)+'</span><span>¥'+t.defaultPrice+'</span></div></div><div><button class="btn btn-blue btn-sm" onclick="et(\''+t.id+'\')">编辑</button><button class="btn btn-red btn-sm gap" onclick="dt(\''+t.id+'\')">删除</button></div></div>'}).join('')}
 function addType(){etId=null;document.getElementById('typeDlgTitle').textContent='新增产品';['tName','tGlass','tColor','tPrice','tMinArea','tFormula'].forEach(function(x){document.getElementById(x).value=''});document.getElementById('tFormula').value='计费面积*单价*数量';document.getElementById('tMinArea').value='0';document.getElementById('typeDlg').classList.add('show')}
 function et(id){var t=types.find(function(x){return x.id===id});if(!t)return;etId=id;document.getElementById('typeDlgTitle').textContent='编辑产品';document.getElementById('tName').value=t.name;document.getElementById('tGlass').value=t.defaultGlass||'';document.getElementById('tColor').value=t.defaultColor||'';document.getElementById('tPrice').value=t.defaultPrice;document.getElementById('tMinArea').value=t.minArea||0;document.getElementById('tFormula').value=t.formula;document.getElementById('typeDlg').classList.add('show')}
-function saveType(){var n=document.getElementById('tName').value.trim();if(!n){alert('请输入名称');return}var o={id:etId||id(),name:n,defaultGlass:document.getElementById('tGlass').value.trim(),defaultColor:document.getElementById('tColor').value.trim(),defaultPrice:parseFloat(document.getElementById('tPrice').value)||0,minArea:parseFloat(document.getElementById('tMinArea').value)||0,formula:document.getElementById('tFormula').value.trim()||'计费面积*单价*数量'};if(etId){var i=types.findIndex(function(x){return x.id===etId});if(i>-1)types[i]=o}else types.push(o);S('w_types',types);closeDlg('typeDlg');rt()}
-function dt(id){if(!confirm('删除？'))return;types=types.filter(function(x){return x.id!==id});S('w_types',types);rt()}
+function saveType(){var n=document.getElementById('tName').value.trim();if(!n){alert('请输入名称');return}var o={id:etId||id(),name:n,defaultGlass:document.getElementById('tGlass').value.trim(),defaultColor:document.getElementById('tColor').value.trim(),defaultPrice:parseFloat(document.getElementById('tPrice').value)||0,minArea:parseFloat(document.getElementById('tMinArea').value)||0,formula:document.getElementById('tFormula').value.trim()||'计费面积*单价*数量'};if(etId){var i=types.findIndex(function(x){return x.id===etId});if(i>-1)types[i]=o}else types.push(o);saveTypes();closeDlg('typeDlg');rt()}
+function dt(id){if(!confirm('删除？'))return;types=types.filter(function(x){return x.id!==id});saveTypes();rt()}
 function rc(){document.getElementById('colorList').innerHTML=colors.map(function(c){return'<span class="color-tag">'+es(c)+'<span class="del" onclick="dc(\''+es(c)+'\')">✕</span></span>'}).join('')}
-function addColor(){var c=document.getElementById('newColor').value.trim();if(!c)return;if(colors.includes(c)){alert('已存在');return}colors.push(c);S('w_colors',colors);document.getElementById('newColor').value='';rc()}
-function dc(c){colors=colors.filter(function(x){return x!==c});S('w_colors',colors);rc()}
+function addColor(){var c=document.getElementById('newColor').value.trim();if(!c)return;if(colors.includes(c)){alert('已存在');return}colors.push(c);saveColors();document.getElementById('newColor').value='';rc()}
+function dc(c){colors=colors.filter(function(x){return x!==c});saveColors();rc()}
 function ru(){document.getElementById('userList').innerHTML=users.map(function(u){var s=u.active===false?' (已停用)':'';return'<div class="user-row"><div><span class="uname">'+es(u.username)+'</span><span class="umeta" style="margin-left:8px">'+(u.role==='admin'?'管理员':'普通用户')+s+'</span></div><div>'+(u.username!=='admin'?'<button class="btn btn-blue btn-sm" onclick="rp(\''+u.username+'\')">重置密码</button><button class="btn '+(u.active===false?'btn-blue':'btn-red')+' btn-sm gap" onclick="tu(\''+u.username+'\')">'+(u.active===false?'启用':'停用')+'</button><button class="btn btn-red btn-sm gap" onclick="du(\''+u.username+'\')">删除</button>':'')+'</div></div>'}).join('')}
-function addUser(){var u=document.getElementById('newUserName').value.trim(),p=document.getElementById('newUserPwd').value;if(!u||!p){alert('请填写账号和密码');return}if(users.find(function(x){return x.username===u})){alert('账号已存在');return}users.push({username:u,password:p,role:'user',active:true});S('w_users',users);document.getElementById('newUserName').value='';document.getElementById('newUserPwd').value='';ru()}
-function rp(u){var p=prompt('为 '+u+' 设置新密码（至少4位）');if(!p||p.length<4){alert('密码至少4位');return}var i=users.findIndex(function(x){return x.username===u});if(i>-1){users[i].password=p;S('w_users',users);alert('密码已重置')}}
-function tu(u){var i=users.findIndex(function(x){return x.username===u});if(i>-1){users[i].active=users[i].active===false?true:false;S('w_users',users);ru()}}
-function du(u){if(u==='admin'){alert('不能删除管理员');return}if(!confirm('删除用户 '+u+'？'))return;users=users.filter(function(x){return x.username!==u});S('w_users',users);ru()}
-function saveTitle(){title=document.getElementById('setTitle').value.trim()||'门窗报价表';S('w_title',title);document.getElementById('topTitle').textContent=title;alert('已保存')}
-function changePwd(){var a=document.getElementById('setPwd1').value,b=document.getElementById('setPwd2').value;if(!a||a.length<4){alert('密码至少4位');return}if(a!==b){alert('两次不一致');return}var i=users.findIndex(function(x){return x.username==='admin'});if(i>-1)users[i].password=a;S('w_users',users);document.getElementById('setPwd1').value='';document.getElementById('setPwd2').value='';alert('密码已修改')}
+function addUser(){var u=document.getElementById('newUserName').value.trim(),p=document.getElementById('newUserPwd').value;if(!u||!p){alert('请填写账号和密码');return}if(users.find(function(x){return x.username===u})){alert('账号已存在');return}users.push({username:u,password:p,role:'user',active:true});pushUsers(function(){document.getElementById('newUserName').value='';document.getElementById('newUserPwd').value='';ru()})}
+function rp(u){var p=prompt('为 '+u+' 设置新密码（至少4位）');if(!p||p.length<4){alert('密码至少4位');return}var i=users.findIndex(function(x){return x.username===u});if(i>-1){users[i].password=p;pushUsers(function(){alert('密码已重置')})}}
+function tu(u){var i=users.findIndex(function(x){return x.username===u});if(i>-1){users[i].active=users[i].active===false?true:false;pushUsers(function(){ru()})}}
+function du(u){if(u==='admin'){alert('不能删除管理员');return}if(!confirm('删除用户 '+u+'？'))return;users=users.filter(function(x){return x.username!==u});pushUsers(function(){ru()})}
+function loadUD(){types=L('w_types_'+cur.username,DEF.types);colors=L('w_colors_'+cur.username,DEF.colors);title=L('w_title_'+cur.username,DEF.title);document.getElementById('topTitle').textContent=title}
+function saveTypes(){S('w_types_'+cur.username,types)}
+function saveColors(){S('w_colors_'+cur.username,colors)}
+function saveTitle(){title=document.getElementById('setTitle').value.trim()||'门窗报价表';S('w_title_'+cur.username,title);document.getElementById('topTitle').textContent=title;alert('已保存')}
+function changePwd(){var a=document.getElementById('setPwd1').value,b=document.getElementById('setPwd2').value;if(!a||a.length<4){alert('密码至少4位');return}if(a!==b){alert('两次不一致');return}var i=users.findIndex(function(x){return x.username==='admin'});if(i>-1)users[i].password=a;pushUsers(function(){document.getElementById('setPwd1').value='';document.getElementById('setPwd2').value='';alert('密码已修改')})}
+function saveToken(){ghToken=document.getElementById('setToken').value.trim();S('w_ghtoken',ghToken);alert('令牌已保存')}
 function closeDlg(id){document.getElementById(id).classList.remove('show')}
 </script>
 </body>
