@@ -188,12 +188,12 @@ let allData={};
 let ghToken=L('w_ghtoken','');
 
 function syncAll(cb){
-  fetch(GH_RAW+'?t='+Date.now()).then(function(r){return r.json()}).then(function(d){
+  fetch(GH_RAW+'?t='+Date.now()).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(function(d){
     allData=d||{};
     users=allData.users||DEF.users;users.forEach(function(u){if(u.active===undefined)u.active=true});S('w_users',users);
     if(cur){var ud=allData.data&&allData.data[cur.username];types=ud&&ud.types?ud.types:DEF.types;colors=ud&&ud.colors?ud.colors:DEF.colors;title=ud&&ud.title?ud.title:DEF.title;var qs=ud&&ud.quotes?ud.quotes:[];S('w_quotes_'+cur.username,qs);saveLocal()}
-    cb()
-  }).catch(function(){if(!users.length)users=DEF.users;if(cur){loadUD()}cb()})
+    if(cb)cb()
+  }).catch(function(e){if(!users.length)users=DEF.users;if(cur)loadUD();if(cb)cb()})
 }
 
 function pushAll(cb){
