@@ -136,9 +136,8 @@ table tr:nth-child(even){background:#fafbfc}
     </div>
 
     <!-- 详情（A4打印版） -->
-    <div id="tab-detail" class="hidden" style="background:#e8e8e8;min-height:100vh;display:flex;justify-content:center;padding:20px 12px">
-      <div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;gap:8px;max-width:210mm;margin-left:auto;margin-right:auto">
+    <div id="tab-detail" class="hidden" style="background:#e8e8e8;min-height:100vh;padding:20px 12px">
+      <div style="max-width:210mm;margin:0 auto 8px;display:flex;justify-content:flex-end;gap:8px">
         <button class="btn btn-blue btn-sm" onclick="printQuote()">🖨️ 打印/导出PDF</button>
         <button class="btn btn-outline btn-sm" onclick="saveQuote()">💾 保存</button>
         <button class="btn btn-gray btn-sm" onclick="switchTab('quote',document.querySelector('.menu span'))">↩ 返回</button>
