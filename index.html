@@ -174,11 +174,11 @@ table tr:nth-child(even){background:#fafbfc}
         <span onclick="switchAdminTab('setting',this)">系统设置</span>
       </div>
       <div id="atab-product">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;color:#999">📦 当前配置：<b id="cfgLabel1">默认配置</b>（修改自动保存）</span><button class="btn btn-blue btn-sm" onclick="addType()">+ 新增产品</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;color:#999">📦 当前配置：<b id="cfgLabel1">默认配置</b></span><span><button class="btn btn-blue btn-sm" onclick="addType()">+ 新增产品</button><button class="btn btn-outline btn-sm gap" onclick="saveAsCfg()" style="background:#27ae60;color:#fff;border-color:#27ae60">💾 保存为配置</button></span></div>
         <div id="typeList" style="margin-top:10px"></div>
       </div>
       <div id="atab-color" class="hidden">
-        <div style="margin-bottom:8px;font-size:12px;color:#999">🎨 当前配置：<b id="cfgLabel2">默认配置</b>（修改自动保存）</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;color:#999">🎨 当前配置：<b id="cfgLabel2">默认配置</b></span><button class="btn btn-outline btn-sm" onclick="saveAsCfg()" style="background:#27ae60;color:#fff;border-color:#27ae60">💾 保存为配置</button></div>
         <div class="row"><input id="newColor" placeholder="颜色名，如：古铜色"><button class="btn btn-blue btn-sm" onclick="addColor()">添加</button></div>
         <div id="colorList" class="color-tags" style="margin-top:10px"></div>
       </div>
@@ -415,14 +415,32 @@ function loadUD(){
   title=L('w_title_'+cur.username,DEF.title);
   document.getElementById('topTitle').textContent=title
 }
-function saveTypes(){saveCfgToCur();pushAll()}
-function saveColors(){saveCfgToCur();pushAll()}
+function saveTypes(){pushAll()}
+function saveColors(){pushAll()}
 function saveCfgToCur(){
   var cfgs=L('w_cfgs_'+cur.username,[]);
   var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
-  if(!cfgs[ci])cfgs[ci]={name:'默认配置',types:[],colors:[]};
+  if(!cfgs[ci])cfgs[ci]={name:'当前配置',types:[],colors:[]};
   cfgs[ci].types=types;cfgs[ci].colors=colors;
   S('w_cfgs_'+cur.username,cfgs)
+}
+function saveAsCfg(){
+  var n=prompt('保存配置为（输入名称，或留空覆盖当前配置）：');
+  if(n===null)return;
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  if(n.trim()){
+    cfgs.push({name:n.trim(),types:JSON.parse(JSON.stringify(types)),colors:JSON.parse(JSON.stringify(colors))});
+    S('w_cfgIdx_'+cur.username,cfgs.length-1);
+    alert('已创建配置：'+n.trim())
+  }else{
+    var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
+    if(!cfgs[ci])cfgs[ci]={name:'默认配置',types:[],colors:[]};
+    cfgs[ci].name=cfgs[ci].name||'默认配置';
+    cfgs[ci].types=types;cfgs[ci].colors=colors;
+    alert('已覆盖：'+cfgs[ci].name)
+  }
+  S('w_cfgs_'+cur.username,cfgs);
+  rcfg();pushAll()
 }
 function rcfg(){
   var cfgs=L('w_cfgs_'+cur.username,[]);
@@ -440,7 +458,7 @@ function switchCfg(i){
   var cfgs=L('w_cfgs_'+cur.username,[]);
   var cfg=cfgs[i];if(!cfg)return;
   types=cfg.types||[];colors=cfg.colors||[];
-  saveCfgToCur();rt();rc();alert('已切换到：'+cfg.name)
+  rt();rc();alert('已切换到：'+cfg.name)
 }
 function saveCfg(){
   saveCfgToCur();rt();rc();alert('配置已保存')
