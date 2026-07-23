@@ -74,9 +74,13 @@ table tr:nth-child(even){background:#fafbfc}
     <h2>🚪 门窗报价系统</h2>
     <div class="sub">请输入账号密码登录</div>
     <input id="loginUser" type="text" placeholder="账号">
-    <input id="loginPwd" type="password" placeholder="密码">
+    <div style="position:relative">
+      <input id="loginPwd" type="password" placeholder="密码" style="padding-right:44px">
+      <span id="eyeBtn" onclick="togglePwd()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:20px;cursor:pointer;user-select:none">👁️</span>
+    </div>
     <button class="login-btn" onclick="doLogin()">登 录</button>
     <div style="margin-top:10px;font-size:12px;color:#999">管理员：admin / 123456</div>
+    <div style="margin-top:4px;font-size:11px;color:#ccc">v2.3</div>
   </div>
 </div>
 
@@ -308,6 +312,7 @@ function saveTypes(){pushAll()}
 function saveColors(){pushAll()}
 function saveTitle(){title=document.getElementById('setTitle').value.trim()||'门窗报价表';pushAll();document.getElementById('topTitle').textContent=title;alert('已保存')}
 function changePwd(){var a=document.getElementById('setPwd1').value,b=document.getElementById('setPwd2').value;if(!a||a.length<4){alert('密码至少4位');return}if(a!==b){alert('两次不一致');return}var i=users.findIndex(function(x){return x.username==='admin'});if(i>-1)users[i].password=a;pushAll(function(){document.getElementById('setPwd1').value='';document.getElementById('setPwd2').value='';alert('密码已修改')})}
+function togglePwd(){var inp=document.getElementById('loginPwd');var btn=document.getElementById('eyeBtn');if(inp.type==='password'){inp.type='text';btn.textContent='🙈'}else{inp.type='password';btn.textContent='👁️'}}
 function closeDlg(id){document.getElementById(id).classList.remove('show')}
 </script>
 </body>
