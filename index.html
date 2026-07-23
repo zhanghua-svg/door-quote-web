@@ -259,13 +259,8 @@ function syncAll(cb){
     users.forEach(function(u){if(u.active===undefined)u.active=true});
     S('w_users',users);
     if(cur){var ud=allData.data&&allData.data[cur.username];
-      // 配置双向同步：云端有就用云端的
-      if(ud&&ud.cfgs&&ud.cfgs.length){
-        S('w_cfgs_'+cur.username,ud.cfgs);
-        var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
-        if(ci>=ud.cfgs.length)ci=0;
-        types=ud.cfgs[ci].types||DEF.types;colors=ud.cfgs[ci].colors||DEF.colors;
-      }else{var cfgs=L('w_cfgs_'+cur.username,null);if(!cfgs||!cfgs.length){var oldTypes=L('w_types_'+cur.username,null);var oldColors=L('w_colors_'+cur.username,null);cfgs=[{name:'默认配置',types:oldTypes||DEF.types,colors:oldColors||DEF.colors}];S('w_cfgs_'+cur.username,cfgs);types=cfgs[0].types;colors=cfgs[0].colors}}
+      // 云端配置存本地备份，但不覆盖当前编辑中的产品/颜色
+      if(ud&&ud.cfgs&&ud.cfgs.length)S('w_cfgs_'+cur.username,ud.cfgs);
       title=ud&&ud.title?ud.title:DEF.title;
       var qs=ud&&ud.quotes&&ud.quotes.length?ud.quotes:L('w_quotes_'+cur.username,[]);S('w_quotes_'+cur.username,qs);saveLocal()}
     if(cb)cb()
