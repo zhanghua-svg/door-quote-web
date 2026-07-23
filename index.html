@@ -251,7 +251,7 @@ function syncAll(cb){
     if(!users.length)users=DEF.users;
     users.forEach(function(u){if(u.active===undefined)u.active=true});
     S('w_users',users);
-    if(cur){var ud=allData.data&&allData.data[cur.username];types=ud&&ud.types?ud.types:DEF.types;colors=ud&&ud.colors?ud.colors:DEF.colors;title=ud&&ud.title?ud.title:DEF.title;var qs=ud&&ud.quotes&&ud.quotes.length?ud.quotes:L('w_quotes_'+cur.username,[]);S('w_quotes_'+cur.username,qs);saveLocal()}
+    if(cur){var ud=allData.data&&allData.data[cur.username];if(!L('w_types_'+cur.username,null)){types=ud&&ud.types?ud.types:DEF.types;colors=ud&&ud.colors?ud.colors:DEF.colors;title=ud&&ud.title?ud.title:DEF.title}var qs=ud&&ud.quotes&&ud.quotes.length?ud.quotes:L('w_quotes_'+cur.username,[]);S('w_quotes_'+cur.username,qs);saveLocal()}
     if(cb)cb()
   }).catch(function(e){if(!users.length)users=DEF.users;if(cur)loadUD();if(cb)cb()})
 }
