@@ -349,8 +349,10 @@ function exportImage(){
     var c=document.createElement('canvas');c.width=el.offsetWidth*2;c.height=el.offsetHeight*2;
     var ctx=c.getContext('2d');ctx.scale(2,2);ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
     ctx.drawImage(img,0,0);URL.revokeObjectURL(url);
-    var a=document.createElement('a');a.download='报价单_'+new Date().toLocaleDateString().replace(/\//g,'-')+'.png';
-    a.href=c.toDataURL('image/png');a.click()
+    var dataUrl=c.toDataURL('image/png');
+    var w=window.open('','_blank');
+    w.document.write('<title>报价单图片</title><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#f0f0f0;text-align:center"><img src="'+dataUrl+'" style="max-width:100%;height:auto" onload="document.title=\'长按保存图片\'"><div style="padding:10px;color:#666;font-size:13px">📱 长按图片保存到相册</div></body>');
+    w.document.close()
   };img.src=url
 }
 function cnyUpper(n){

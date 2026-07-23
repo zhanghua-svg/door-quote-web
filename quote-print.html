@@ -30,7 +30,7 @@ table th{background:#f0f0f0;font-weight:600}
 </style>
 </head>
 <body>
-<div class="toolbar"><button class="btn-blue" onclick="window.print()">🖨️ 打印/导出PDF</button><button class="btn-blue" onclick="exportImg()">🖼️ 导出图片</button><button class="btn-gray" onclick="window.close()">✕ 关闭</button></div>
+<div class="toolbar"><button class="btn-blue" onclick="window.print()">🖨️ 打印/导出PDF</button><button class="btn-blue" onclick="exportImg()">🖼️ 导出图片</button><button class="btn-blue" onclick="saveQuote()" style="background:#27ae60">💾 保存</button><button class="btn-gray" onclick="window.close()">✕ 关闭</button></div>
 <div class="page">
   <div class="header"><h2 id="pTitle">门窗报价表</h2></div>
   <div class="info-row"><span>工程名称：<b id="pProject"></b></span><span>客户姓名：<b id="pName"></b></span><span>联系电话：<b id="pPhone"></b></span></div>
@@ -72,6 +72,15 @@ function cny(n){
   if(j==='0'&&f==='0')r+='整';else{r+=d[parseInt(j)]+'角';if(f!=='0')r+=d[parseInt(f)]+'分'}
   return r
 }
+function saveQuote(){
+  var d=JSON.parse(localStorage.getItem('w_printQuote')||'{}');
+  if(!d.title){alert('无报价数据');return}
+  d._id=Date.now().toString();d.createTime=Date.now();
+  var key='w_quotes_'+(d.maker||'admin');
+  var a=JSON.parse(localStorage.getItem(key)||'[]');
+  a.unshift(d);localStorage.setItem(key,JSON.stringify(a));
+  alert('保存成功！');
+}
 function exportImg(){
   var el=document.querySelector('.page');
   var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+el.offsetWidth+'" height="'+el.offsetHeight+'"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:PingFang SC,Microsoft YaHei,sans-serif;font-size:12px;color:#222">'+el.innerHTML+'</div></foreignObject></svg>';
@@ -82,8 +91,10 @@ function exportImg(){
     var c=document.createElement('canvas');c.width=el.offsetWidth*2;c.height=el.offsetHeight*2;
     var ctx=c.getContext('2d');ctx.scale(2,2);ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
     ctx.drawImage(img,0,0);URL.revokeObjectURL(url);
-    var a=document.createElement('a');a.download='报价单_'+new Date().toLocaleDateString().replace(/\//g,'-')+'.png';
-    a.href=c.toDataURL('image/png');a.click()
+    var dataUrl=c.toDataURL('image/png');
+    var w=window.open('','_blank');
+    w.document.write('<title>报价单图片</title><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#f0f0f0;text-align:center"><img src="'+dataUrl+'" style="max-width:100%;height:auto" onload="document.title=\'长按保存图片\'"><div style="padding:10px;color:#666;font-size:13px">📱 长按图片保存到相册</div></body>');
+    w.document.close()
   };img.src=url
 }
 </script>
