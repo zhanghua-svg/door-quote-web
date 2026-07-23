@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>报价单</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#e8e8e8;font-family:'PingFang SC','Microsoft YaHei',sans-serif;padding:20px}
+.toolbar{max-width:210mm;margin:0 auto 8px;text-align:right}
+.toolbar button{padding:6px 16px;border:none;border-radius:4px;font-size:13px;cursor:pointer;margin-left:6px}
+.btn-blue{background:#2980b9;color:#fff}
+.btn-gray{background:#eee;color:#666}
+.page{width:210mm;min-height:297mm;background:#fff;padding:15mm 12mm;box-shadow:0 2px 20px rgba(0,0,0,0.15);font-size:12px;color:#222;line-height:1.6;margin:0 auto}
+.header{text-align:center;margin-bottom:8px}
+.header h2{font-size:18px;font-weight:700;letter-spacing:2px}
+.info-row{display:flex;flex-wrap:wrap;gap:6px 20px;margin-bottom:4px;font-size:12px}
+.info-row b{border-bottom:1px solid #333;padding:0 12px;min-width:60px;display:inline-block}
+table{width:100%;border-collapse:collapse;margin:6px 0;font-size:11px}
+table th,table td{border:1px solid #999;padding:4px 3px;text-align:center}
+table th{background:#f0f0f0;font-weight:600}
+.w40{width:40px}.w60{width:60px}.w70{width:70px}.w80{width:80px}
+.sum-line{display:flex;justify-content:space-between;margin:2px 0;font-size:12px}
+.sum-line.total{font-size:14px;font-weight:700;border-top:1px solid #999;padding-top:4px;margin-top:4px}
+.pay-row{display:flex;flex-wrap:wrap;gap:8px 16px;margin:4px 0;font-size:12px}
+.footer{margin-top:10px;font-size:11px;color:#555;line-height:1.8}
+.footer .sign{display:flex;justify-content:space-between;margin-top:8px}
+.footer .sign span{flex:1;text-align:center}
+.note-row{display:flex;align-items:center;margin:1px 0}
+.note-row span{flex-shrink:0;font-weight:600;margin-right:4px}
+@media print{body{background:#fff;padding:0}.page{box-shadow:none;width:100%;min-height:auto}.toolbar{display:none}}
+</style>
+</head>
+<body>
+<div class="toolbar"><button class="btn-blue" onclick="window.print()">🖨️ 打印/导出PDF</button><button class="btn-gray" onclick="window.close()">✕ 关闭</button></div>
+<div class="page">
+  <div class="header"><h2 id="pTitle">门窗报价表</h2></div>
+  <div class="info-row"><span>工程名称：<b id="pProject"></b></span><span>客户姓名：<b id="pName"></b></span><span>联系电话：<b id="pPhone"></b></span></div>
+  <div class="info-row"><span>报价日期：<b id="pDate"></b></span></div>
+  <table><thead><tr><th class="w40">序号</th><th class="w60">安装位置</th><th class="w70">产品类型</th><th class="w80">规格(mm)</th><th class="w60">颜色</th><th class="w70">玻璃种类</th><th class="w60">面积</th><th class="w40">数量</th><th class="w70">单价</th><th class="w80">合计</th><th class="w60">备注</th></tr></thead><tbody id="pBody"></tbody></table>
+  <div class="sum-line"><span>小计：</span><span id="pSub"></span></div>
+  <div class="sum-line total"><span>合计：</span><span id="pTotal"></span></div>
+  <div class="sum-line" style="text-align:center"><span>合计金额（大写）：<b id="pUpper"></b></span></div>
+  <div style="margin:8px 0"><span>预付定金：<input placeholder="            " style="border:none;width:110px;font-size:11px"></span><span>尾款：<input placeholder="            " style="border:none;width:110px;font-size:11px"></span></div>
+  <div>付款方式：</div>
+  <div class="pay-row"><label><input type="checkbox">现金</label><label><input type="checkbox">刷卡</label><label><input type="checkbox">支票</label><label><input type="checkbox">微信/支付宝</label><label><input type="checkbox">银行卡转账</label><label><input type="checkbox">其他</label></div>
+  <div class="footer"><div><b>备注：</b></div><div id="pNotes"></div>
+    <div class="sign"><span>客户确认：<input placeholder="客户签字" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>制单：<input id="pMaker" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>日期：<input id="pDate2" style="border:none;width:90px;font-size:11px;text-align:center"></span></div>
+  </div>
+</div>
+<script>
+function fm(n){return Number(n||0).toFixed(2)}
+function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+var q=JSON.parse(localStorage.getItem('w_printQuote')||'{}');
+if(!q.title){document.getElementById('pTitle').textContent='门窗报价表';document.getElementById('pBody').innerHTML='<tr><td colspan="11">无报价数据，请返回重新生成</td></tr>'}else{
+  document.getElementById('pTitle').textContent=q.title||'门窗报价表';
+  document.getElementById('pProject').textContent=q.projectName||'';
+  document.getElementById('pName').textContent=q.customerName||'';
+  document.getElementById('pPhone').textContent=q.customerPhone||'';
+  document.getElementById('pDate').textContent=q.date||'';
+  document.getElementById('pDate2').value=q.date||'';
+  document.getElementById('pMaker').value=q.maker||'';
+  document.getElementById('pBody').innerHTML=(q.items||[]).map(function(r){return'<tr><td>'+(r._seq||'')+'</td><td>'+es(r.position)+'</td><td>'+es(r.productType)+'</td><td>'+(r.width?r.width+'×'+r.height:'')+'</td><td>'+es(r.color)+'</td><td>'+es(r.glass)+'</td><td>'+fm(r.area||0)+'</td><td>'+r.quantity+'</td><td>'+fm(r.unitPrice||0)+'</td><td>'+fm(r.total||0)+'</td><td>'+es(r.remark)+'</td></tr>'}).join('');
+  document.getElementById('pSub').textContent='¥'+fm(q.subtotal||0);
+  document.getElementById('pTotal').textContent='¥'+fm(q.finalTotal||0);
+  document.getElementById('pUpper').textContent=cny(q.finalTotal||0);
+  var notes=['以上报价不含税，如需开票加收6%税金。','产品质保5年，人为损坏不在质保范围内。','确认下单后预付50%定金，尾款安装验收后付清。','生产周期15-20个工作日，特殊情况另行通知。','本报价单有效期为30天。'];
+  document.getElementById('pNotes').innerHTML=notes.map(function(n,i){return'<div class="note-row"><span>'+(i+1)+'.</span><span style="font-size:11px">'+es(n)+'</span></div>'}).join('');
+}
+function cny(n){
+  var d='零壹贰叁肆伍陆柒捌玖',u=['','拾','佰','仟','万','拾','佰','仟','亿'];
+  var s=String(Math.round(Number(n)*100)),p=s.length-2;
+  var y=s.substring(0,p)||'0',j=s.substring(p,p+1)||'0',f=s.substring(p+1)||'0',r='';
+  for(var i=0;i<y.length;i++){var c=parseInt(y[i]),t=u[y.length-1-i];if(c===0){if(r[r.length-1]!=='零'&&i<y.length-1)r+='零'}else r+=d[c]+t}
+  r+=r?'元':'零元';
+  if(j==='0'&&f==='0')r+='整';else{r+=d[parseInt(j)]+'角';if(f!=='0')r+=d[parseInt(f)]+'分'}
+  return r
+}
+</script>
+</body>
+</html>

@@ -333,25 +333,10 @@ function dr(i){if(confirm('删除？')){rows.splice(i,1);rq();rc2()}}
 function rc2(){var pm={};rows.forEach(function(r){var p=(r.position||'').trim();if(!p){r._seq='';return}if(!pm[p])pm[p]=Object.keys(pm).length+1;r._seq=pm[p]});var s=0;rows.forEach(function(r){s+=Number(r.total)||0});document.getElementById('quoteTotal').textContent='¥'+fm(s)}
 
 function genQuote(){if(!rows.length){alert('请添加产品');return}
-  document.getElementById('detailTitle').textContent=title;
-  document.getElementById('dProject').textContent=document.getElementById('qProject').value;
-  document.getElementById('dCust').textContent=document.getElementById('qName').value;
-  document.getElementById('dPhone').textContent=document.getElementById('qPhone').value;
-  var d=new Date();document.getElementById('dDate').textContent=d.toLocaleDateString();
-  document.getElementById('dDate2').value=d.toLocaleDateString();
-  document.getElementById('dMaker').value=cur.username;
-  document.getElementById('detailBody').innerHTML=rows.map(function(r){return'<tr><td>'+(r._seq||'')+'</td><td>'+es(r.position)+'</td><td>'+es(r.productType)+'</td><td>'+(r.width?r.width+'×'+r.height:'')+'</td><td>'+es(r.color)+'</td><td>'+es(r.glass)+'</td><td>'+fm(r.area||0)+'</td><td>'+r.quantity+'</td><td>'+fm(r.unitPrice||0)+'</td><td>'+fm(r.total||0)+'</td><td>'+es(r.remark)+'</td></tr>'}).join('');
   var sub=0;rows.forEach(function(r){sub+=Number(r.total)||0});
-  var disc=document.getElementById('discountInput')?parseInt(document.getElementById('discountInput').value)||100:100;
-  var discAmt=Math.round(sub*(1-disc/100)*100)/100;
-  var final=Math.round((sub-discAmt)*100)/100;
-  document.getElementById('dSub').textContent='¥'+fm(sub);
-  document.getElementById('dDisc').textContent=disc+'%（'+(disc<100?'已优惠¥'+fm(discAmt):'无折扣')+'）';
-  document.getElementById('dTotal').textContent='¥'+fm(final);
-  document.getElementById('dUpper').textContent=cnyUpper(final);
-  // 备注模板
-  loadNotes();
-  switchTab('detail',null)
+  var q={title:title,projectName:document.getElementById('qProject').value,customerName:document.getElementById('qName').value,customerPhone:document.getElementById('qPhone').value,items:rows.map(function(r){return JSON.parse(JSON.stringify(r))}),subtotal:sub,finalTotal:sub,date:new Date().toLocaleDateString(),maker:cur.username};
+  localStorage.setItem('w_printQuote',JSON.stringify(q));
+  window.open('/door-quote-web/quote-print.html','_blank')
 }
 function loadNotes(){
   var notes=L('w_notes_'+cur.username,['以上报价不含税，如需开票加收6%税金。','产品质保5年，人为损坏不在质保范围内。','确认下单后预付50%定金，尾款安装验收后付清。','生产周期15-20个工作日，特殊情况另行通知。','本报价单有效期为30天。']);
