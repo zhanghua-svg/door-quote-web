@@ -65,6 +65,33 @@ table tr:nth-child(even){background:#fafbfc}
 .dialog h3{font-size:17px;margin-bottom:16px}
 .dialog .close{float:right;font-size:22px;color:#999;cursor:pointer}
 .hidden{display:none!important}
+
+/* A4打印 */
+.a4-page{max-width:800px;margin:0 auto;background:#fff;padding:30px 24px;font-size:12px;color:#222;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+.a4-page .header{text-align:center;margin-bottom:8px}
+.a4-page .header h2{font-size:18px;font-weight:700;letter-spacing:2px}
+.a4-page .info-row{display:flex;flex-wrap:wrap;gap:6px 20px;margin-bottom:4px;font-size:12px}
+.a4-page .info-row b{border-bottom:1px solid #333;padding:0 12px;min-width:60px;display:inline-block}
+.a4-page table{width:100%;border-collapse:collapse;margin:6px 0;font-size:11px}
+.a4-page table th,.a4-page table td{border:1px solid #999;padding:4px 3px;text-align:center}
+.a4-page table th{background:#f0f0f0;font-weight:600}
+.a4-page .w40{width:40px}.a4-page .w55{width:55px}.a4-page .w60{width:60px}.a4-page .w65{width:65px}.a4-page .w70{width:70px}.a4-page .w75{width:75px}.a4-page .w80{width:80px}
+.a4-page .sum-line{display:flex;justify-content:space-between;margin:2px 0;font-size:12px}
+.a4-page .sum-line.total{font-size:14px;font-weight:700;border-top:1px solid #999;padding-top:4px;margin-top:4px}
+.a4-page .pay-row{display:flex;flex-wrap:wrap;gap:8px 16px;margin:4px 0;font-size:12px}
+.a4-page .pay-row label{cursor:pointer}
+.a4-page .footer{margin-top:10px;font-size:11px;color:#555;line-height:1.8}
+.a4-page .footer .sign{display:flex;justify-content:space-between;margin-top:8px}
+.a4-page .footer .sign span{flex:1;text-align:center}
+.a4-page .note-row{display:flex;align-items:center;margin:1px 0}
+.a4-page .note-row span{flex-shrink:0;font-weight:600;margin-right:4px}
+.a4-page .note-row input{background:transparent;border:none;width:95%;font-size:11px;padding:2px}
+
+@media print{
+  body{background:#fff}
+  .topbar,.menu,.content>*:not(#tab-detail),.a4-page+*,#tab-detail>div:first-child{display:none!important}
+  .a4-page{box-shadow:none;max-width:none;padding:10mm}
+}
 </style>
 </head>
 <body>
@@ -107,14 +134,33 @@ table tr:nth-child(even){background:#fafbfc}
       <button class="btn btn-blue btn-block" onclick="genQuote()">📋 生成报价单</button>
     </div>
 
-    <!-- 详情 -->
+    <!-- 详情（A4打印版） -->
     <div id="tab-detail" class="hidden">
-      <div class="card"><h3 id="detailTitle" style="text-align:center"></h3></div>
-      <div class="table-wrap"><table><thead><tr><th>序号</th><th>位置</th><th>产品</th><th>规格</th><th>颜色</th><th>玻璃</th><th>面积</th><th>数量</th><th>单价</th><th>合计</th><th>备注</th></tr></thead><tbody id="detailBody"></tbody></table></div>
-      <div class="total-bar"><span>合计</span><span class="big" id="detailTotal"></span></div>
-      <button class="btn btn-blue btn-block" onclick="saveQuote()">💾 保存报价单</button>
-      <button class="btn btn-outline btn-block" onclick="exportCSV()">📊 导出表格</button>
-      <button class="btn btn-gray btn-block" onclick="switchTab('quote',document.querySelector('.menu span'))">↩ 返回修改</button>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px;gap:8px">
+        <button class="btn btn-blue btn-sm" onclick="printQuote()">🖨️ 打印</button>
+        <button class="btn btn-outline btn-sm" onclick="saveQuote()">💾 保存</button>
+        <button class="btn btn-gray btn-sm" onclick="switchTab('quote',document.querySelector('.menu span'))">↩ 返回</button>
+      </div>
+      <div class="a4-page" id="printArea">
+        <div class="header"><h2 id="detailTitle"></h2></div>
+        <div class="info-row">
+          <span>工程名称：<b id="dProject"></b></span>
+          <span>客户姓名：<b id="dCust"></b></span>
+          <span>联系电话：<b id="dPhone"></b></span>
+        </div>
+        <div class="info-row"><span>报价日期：<b id="dDate"></b></span></div>
+        <table><thead><tr><th class="w40">序号</th><th class="w60">安装位置</th><th class="w70">产品类型</th><th class="w80">规格(mm)</th><th class="w60">颜色</th><th class="w70">玻璃种类</th><th class="w55">面积</th><th class="w40">数量</th><th class="w65">单价</th><th class="w75">合计</th><th class="w60">备注</th></tr></thead><tbody id="detailBody"></tbody></table>
+        <div class="sum-line"><span>小计：</span><span id="dSub"></span></div>
+        <div class="sum-line"><span>折扣：</span><span id="dDisc"></span></div>
+        <div class="sum-line total"><span>合计：</span><span id="dTotal"></span></div>
+        <div class="sum-line" style="text-align:center"><span>合计金额（大写）：<b id="dUpper"></b></span></div>
+        <div class="row"><span>预付定金：<input id="dPrepay" placeholder="            " style="border:none;width:110px;font-size:11px"></span><span>尾款：<input id="dRest" placeholder="            " style="border:none;width:110px;font-size:11px"></span></div>
+        <div style="margin-top:4px"><span>付款方式：</span></div>
+        <div class="pay-row"><label><input type="checkbox">现金</label><label><input type="checkbox">刷卡</label><label><input type="checkbox">支票</label><label><input type="checkbox">微信/支付宝</label><label><input type="checkbox">银行卡转账</label><label><input type="checkbox">其他</label></div>
+        <div class="footer"><div><b>备注：</b></div><div id="dNotes"></div>
+          <div class="sign"><span>客户确认：<input placeholder="客户签字" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>制单：<input id="dMaker" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>日期：<input id="dDate2" style="border:none;width:90px;font-size:11px;text-align:center"></span></div>
+        </div>
+      </div>
     </div>
 
     <!-- 历史 -->
@@ -285,7 +331,52 @@ function at(i){var r=rows[i],a=parseFloat(r.area)||0,p=parseFloat(r.unitPrice)||
 function dr(i){if(confirm('删除？')){rows.splice(i,1);rq();rc2()}}
 function rc2(){var pm={};rows.forEach(function(r){var p=(r.position||'').trim();if(!p){r._seq='';return}if(!pm[p])pm[p]=Object.keys(pm).length+1;r._seq=pm[p]});var s=0;rows.forEach(function(r){s+=Number(r.total)||0});document.getElementById('quoteTotal').textContent='¥'+fm(s)}
 
-function genQuote(){if(!rows.length){alert('请添加产品');return}document.getElementById('detailTitle').textContent=title;document.getElementById('detailBody').innerHTML=rows.map(function(r){return'<tr><td>'+(r._seq||'')+'</td><td>'+es(r.position)+'</td><td>'+es(r.productType)+'</td><td>'+r.width+'×'+r.height+'</td><td>'+es(r.color)+'</td><td>'+es(r.glass)+'</td><td>'+fm(r.area||0)+'</td><td>'+r.quantity+'</td><td>¥'+fm(r.unitPrice||0)+'</td><td>¥'+fm(r.total||0)+'</td><td>'+es(r.remark)+'</td></tr>'}).join('');var s=0;rows.forEach(function(r){s+=Number(r.total)||0});document.getElementById('detailTotal').textContent='¥'+fm(s);switchTab('detail',null)}
+function genQuote(){if(!rows.length){alert('请添加产品');return}
+  document.getElementById('detailTitle').textContent=title;
+  document.getElementById('dProject').textContent=document.getElementById('qProject').value;
+  document.getElementById('dCust').textContent=document.getElementById('qName').value;
+  document.getElementById('dPhone').textContent=document.getElementById('qPhone').value;
+  var d=new Date();document.getElementById('dDate').textContent=d.toLocaleDateString();
+  document.getElementById('dDate2').value=d.toLocaleDateString();
+  document.getElementById('dMaker').value=cur.username;
+  document.getElementById('detailBody').innerHTML=rows.map(function(r){return'<tr><td>'+(r._seq||'')+'</td><td>'+es(r.position)+'</td><td>'+es(r.productType)+'</td><td>'+(r.width?r.width+'×'+r.height:'')+'</td><td>'+es(r.color)+'</td><td>'+es(r.glass)+'</td><td>'+fm(r.area||0)+'</td><td>'+r.quantity+'</td><td>'+fm(r.unitPrice||0)+'</td><td>'+fm(r.total||0)+'</td><td>'+es(r.remark)+'</td></tr>'}).join('');
+  var sub=0;rows.forEach(function(r){sub+=Number(r.total)||0});
+  var disc=document.getElementById('discountInput')?parseInt(document.getElementById('discountInput').value)||100:100;
+  var discAmt=Math.round(sub*(1-disc/100)*100)/100;
+  var final=Math.round((sub-discAmt)*100)/100;
+  document.getElementById('dSub').textContent='¥'+fm(sub);
+  document.getElementById('dDisc').textContent=disc+'%（'+(disc<100?'已优惠¥'+fm(discAmt):'无折扣')+'）';
+  document.getElementById('dTotal').textContent='¥'+fm(final);
+  document.getElementById('dUpper').textContent=cnyUpper(final);
+  // 备注模板
+  loadNotes();
+  switchTab('detail',null)
+}
+function loadNotes(){
+  var notes=L('w_notes_'+cur.username,['以上报价不含税，如需开票加收6%税金。','产品质保5年，人为损坏不在质保范围内。','确认下单后预付50%定金，尾款安装验收后付清。','生产周期15-20个工作日，特殊情况另行通知。','本报价单有效期为30天。']);
+  var admin=cur&&cur.role==='admin';
+  document.getElementById('dNotes').innerHTML=notes.map(function(n,i){
+    if(admin)return'<div class="note-row"><span>'+(i+1)+'.</span><input value="'+es(n)+'" onchange="saveNote('+i+',this.value)" style="border:none;width:95%;font-size:11px;padding:2px;background:transparent"></div>';
+    return'<div class="note-row"><span>'+(i+1)+'.</span><span style="font-size:11px">'+es(n)+'</span></div>'
+  }).join('')+(admin?'<div class="note-row"><span>'+(notes.length+1)+'.</span><input value="" placeholder="可自行添加" onchange="saveNote('+notes.length+',this.value)" style="border:none;width:95%;font-size:11px;padding:2px;background:transparent"></div>':'')
+}
+function saveNote(i,v){if(cur.role!=='admin')return;var notes=L('w_notes_'+cur.username,[]);notes[i]=v;S('w_notes_'+cur.username,notes)}
+function printQuote(){window.print()}
+function cnyUpper(n){
+  var digits='零壹贰叁肆伍陆柒捌玖';var units=['','拾','佰','仟','万','拾','佰','仟','亿'];
+  var s=String(Math.round(n*100));var p=s.length-2;
+  var yuan=s.substring(0,p)||'0';var jiao=s.substring(p,p+1)||'0';var fen=s.substring(p+1)||'0';
+  var r='';
+  for(var i=0;i<yuan.length;i++){
+    var d=parseInt(yuan[i]);var u=units[yuan.length-1-i];
+    if(d===0){if(r[r.length-1]!=='零'&&i<yuan.length-1)r+='零'}
+    else r+=digits[d]+u
+  }
+  r+=r?'元':'零元';
+  if(jiao==='0'&&fen==='0')r+='整';
+  else{r+=digits[parseInt(jiao)]+'角';if(fen!=='0')r+=digits[parseInt(fen)]+'分'}
+  return r
+}
 function saveQuote(){var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});var q={_id:Date.now().toString(),title:title,projectName:document.getElementById('qProject').value,customerName:document.getElementById('qName').value,customerPhone:document.getElementById('qPhone').value,items:rows.map(function(r){return JSON.parse(JSON.stringify(r))}),finalTotal:s,createTime:Date.now()};var a=L('w_quotes_'+cur.username,[]);a.unshift(q);S('w_quotes_'+cur.username,a);pushAll();alert('保存成功！');switchTab('history',document.querySelectorAll('.menu span')[1])}
 function exportCSV(){var c='\uFEFF序号,位置,产品,宽,高,颜色,玻璃,面积,数量,单价,合计,备注\n';rows.forEach(function(r){c+=[r._seq||'',r.position||'',r.productType||'',r.width||'',r.height||'',r.color||'',r.glass||'',r.area||'',r.quantity||'',r.unitPrice||'',r.total||'',r.remark||''].join(',')+'\n'});var s=0;rows.forEach(function(r){s+=parseFloat(r.total)||0});c+='\n,,,,,,,,,合计,'+s;navigator.clipboard.writeText(c).then(function(){alert('已复制！打开WPS/Excel粘贴')}).catch(function(){alert('复制失败')})}
 
