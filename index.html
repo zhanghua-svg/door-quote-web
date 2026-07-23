@@ -187,6 +187,11 @@ table tr:nth-child(even){background:#fafbfc}
       </div>
       <div id="atab-setting" class="hidden">
         <div class="card"><h3>报价表标题</h3><div class="row"><input id="setTitle" placeholder="门窗报价表"><button class="btn btn-blue btn-sm" onclick="saveTitle()">保存</button></div></div>
+        <div class="card"><h3>配置管理</h3>
+          <div class="row"><label>当前配置</label><select id="cfgSelect" onchange="switchCfg(this.value)"></select><button class="btn btn-outline btn-sm" onclick="saveCfg()">💾 保存当前</button></div>
+          <div class="row" style="margin-top:6px"><input id="newCfgName" placeholder="新建配置名"><button class="btn btn-blue btn-sm" onclick="addCfg()">+ 新建</button><button class="btn btn-red btn-sm gap" onclick="delCfg()">🗑 删除</button></div>
+          <div class="row" style="margin-top:6px"><button class="btn btn-outline btn-sm" onclick="expCfg()">📤 导出</button><button class="btn btn-outline btn-sm" onclick="impCfg()">📥 导入</button><span style="font-size:11px;color:#999">导出为JSON文件备份</span></div>
+        </div>
         <div class="card" id="adminPwdCard"><h3>修改管理员密码</h3><div class="row"><input id="setPwd1" type="password" placeholder="新密码"><input id="setPwd2" type="password" placeholder="确认"><button class="btn btn-blue btn-sm" onclick="changePwd()">修改</button></div></div>
       </div>
     </div>
@@ -206,6 +211,7 @@ table tr:nth-child(even){background:#fafbfc}
   <div style="font-size:11px;color:#999">变量：面积 / 计费面积 / 单价 / 数量</div>
   <button class="btn btn-blue btn-block" style="margin-top:10px" onclick="saveType()">保存</button>
 </div></div>
+<input type="file" id="cfgFileInput" accept=".json" style="display:none" onchange="impCfgFile(this)">
 
 <script>
 const DEF={
@@ -251,7 +257,7 @@ function syncAll(cb){
     if(!users.length)users=DEF.users;
     users.forEach(function(u){if(u.active===undefined)u.active=true});
     S('w_users',users);
-    if(cur){var ud=allData.data&&allData.data[cur.username];if(!L('w_types_'+cur.username,null)){types=ud&&ud.types?ud.types:DEF.types;colors=ud&&ud.colors?ud.colors:DEF.colors;title=ud&&ud.title?ud.title:DEF.title}var qs=ud&&ud.quotes&&ud.quotes.length?ud.quotes:L('w_quotes_'+cur.username,[]);S('w_quotes_'+cur.username,qs);saveLocal()}
+    if(cur){var ud=allData.data&&allData.data[cur.username];if(!L('w_cfgs_'+cur.username,null)){var cts=ud&&ud.types?ud.types:DEF.types;var cls=ud&&ud.colors?ud.colors:DEF.colors;S('w_cfgs_'+cur.username,[{name:'默认配置',types:cts,colors:cls}]);types=cts;colors=cls;title=ud&&ud.title?ud.title:DEF.title}var qs=ud&&ud.quotes&&ud.quotes.length?ud.quotes:L('w_quotes_'+cur.username,[]);S('w_quotes_'+cur.username,qs);saveLocal()}
     if(cb)cb()
   }).catch(function(e){if(!users.length)users=DEF.users;if(cur)loadUD();if(cb)cb()})
 }
@@ -259,7 +265,7 @@ function syncAll(cb){
 function pushAll(cb){
   saveLocal();
   if(!ghToken){if(cb)cb();return}
-  if(cur){if(!allData.data)allData.data={};if(!allData.data[cur.username])allData.data[cur.username]={};allData.data[cur.username].types=types;allData.data[cur.username].colors=colors;allData.data[cur.username].title=title;var qs=L('w_quotes_'+cur.username,[]);allData.data[cur.username].quotes=qs;allData.users=users}
+  if(cur){if(!allData.data)allData.data={};if(!allData.data[cur.username])allData.data[cur.username]={};allData.data[cur.username].types=types;allData.data[cur.username].colors=colors;allData.data[cur.username].title=title;allData.data[cur.username].cfgs=L('w_cfgs_'+cur.username,[]);var qs=L('w_quotes_'+cur.username,[]);allData.data[cur.username].quotes=qs;allData.users=users}
   fetch(GH_API,{headers:{Authorization:'token '+ghToken}}).then(function(r){return r.json()}).then(function(remote){
     // 合并用户：云端有的保留，本地新增的追加
     if(remote.users){
@@ -283,7 +289,7 @@ function pushAll(cb){
   }).catch(function(e){console.log(e)}).then(function(){if(cb)cb()})
 }
 
-function saveLocal(){if(cur){S('w_types_'+cur.username,types);S('w_colors_'+cur.username,colors);S('w_title_'+cur.username,title)}if(users.length)S('w_users',users)}
+function saveLocal(){if(cur){saveCfgToCur();S('w_title_'+cur.username,title)}if(users.length)S('w_users',users)}
 
 function calc(f,a,p,q,m){var e=Math.max(a||0,m||0);try{var x=f.replace(/计费面积/g,String(e)).replace(/面积/g,String(a||0)).replace(/单价/g,String(p||0)).replace(/数量/g,String(q||0));if(!/^[\d\s+\-*/.()]+$/.test(x))return Number(a)*Number(p)*Number(q);var r=Function('"use strict";return ('+x+')')();return Number(Math.round(Number(r)*100)/100)}catch(c){return Number(a)*Number(p)*Number(q)}}
 
@@ -316,7 +322,7 @@ switchTab('quote',document.querySelector('.menu span'))
 function logout(){if(cur)S('w_draft_'+cur.username,null);cur=null;rows=[];document.getElementById('loginPage').style.display='flex';document.getElementById('mainPage').classList.remove('show');document.getElementById('loginPwd').value=''}
 
 function switchTab(n,el){document.querySelectorAll('.menu>span').forEach(function(s){s.classList.remove('active')});if(el)el.classList.add('active');['quote','detail','history','admin'].forEach(function(t){document.getElementById('tab-'+t).classList.add('hidden')});document.getElementById('tab-'+n).classList.remove('hidden');if(n==='quote'){var d=L('w_draft_'+cur.username,null);if(d&&d.length&&!rows.length)rows=d;rq()}if(n==='history')rh();if(n==='admin')ra()}
-function switchAdminTab(n,el){document.querySelectorAll('#tab-admin .menu span').forEach(function(s){s.classList.remove('active')});if(el)el.classList.add('active');['product','color','user','setting'].forEach(function(t){document.getElementById('atab-'+t).classList.add('hidden')});document.getElementById('atab-'+n).classList.remove('hidden');if(n==='product')rt();if(n==='color')rc();if(n==='user')ru();if(n==='setting')document.getElementById('setTitle').value=title}
+function switchAdminTab(n,el){document.querySelectorAll('#tab-admin .menu span').forEach(function(s){s.classList.remove('active')});if(el)el.classList.add('active');['product','color','user','setting'].forEach(function(t){document.getElementById('atab-'+t).classList.add('hidden')});document.getElementById('atab-'+n).classList.remove('hidden');if(n==='product')rt();if(n==='color')rc();if(n==='user')ru();if(n==='setting'){document.getElementById('setTitle').value=title;rcfg()}}
 
 function addRow(){rows.push({id:id(),position:'',productType:'',width:'',height:'',color:'',glass:'',area:0,quantity:1,unitPrice:0,total:0,remark:'',_seq:''});rq();saveDraft()}
 function rq(){try{
@@ -391,9 +397,84 @@ function addUser(){var u=document.getElementById('newUserName').value.trim(),p=d
 function rp(u){var p=prompt('为 '+u+' 设置新密码（至少4位）');if(!p||p.length<4){alert('密码至少4位');return}var i=users.findIndex(function(x){return x.username===u});if(i>-1){users[i].password=p;pushAll(function(){alert('密码已重置')})}}
 function tu(u){var i=users.findIndex(function(x){return x.username===u});if(i>-1){users[i].active=users[i].active===false?true:false;pushAll(function(){ru()})}}
 function du(u){if(u==='admin'){alert('不能删除管理员');return}if(!confirm('删除用户 '+u+'？'))return;users=users.filter(function(x){return x.username!==u});pushAll(function(){ru()})}
-function loadUD(){types=L('w_types_'+cur.username,DEF.types);colors=L('w_colors_'+cur.username,DEF.colors);title=L('w_title_'+cur.username,DEF.title);document.getElementById('topTitle').textContent=title}
-function saveTypes(){pushAll()}
-function saveColors(){pushAll()}
+function loadUD(){
+  var cfgs=L('w_cfgs_'+cur.username,null);
+  if(!cfgs||!cfgs.length){cfgs=[{name:'默认配置',types:DEF.types,colors:DEF.colors}];S('w_cfgs_'+cur.username,cfgs)}
+  var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
+  if(ci>=cfgs.length)ci=0;
+  var cfg=cfgs[ci];
+  types=cfg.types||DEF.types;colors=cfg.colors||DEF.colors;
+  S('w_cfgIdx_'+cur.username,ci);
+  title=L('w_title_'+cur.username,DEF.title);
+  document.getElementById('topTitle').textContent=title
+}
+function saveTypes(){saveCfgToCur();pushAll()}
+function saveColors(){saveCfgToCur();pushAll()}
+function saveCfgToCur(){
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
+  if(!cfgs[ci])cfgs[ci]={name:'默认配置',types:[],colors:[]};
+  cfgs[ci].types=types;cfgs[ci].colors=colors;
+  S('w_cfgs_'+cur.username,cfgs)
+}
+function rcfg(){
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
+  var sel=document.getElementById('cfgSelect');
+  if(sel)sel.innerHTML=cfgs.map(function(c,i){return'<option value="'+i+'"'+(i===ci?' selected':'')+'>'+es(c.name)+'</option>'}).join('');
+}
+function switchCfg(i){
+  i=parseInt(i);S('w_cfgIdx_'+cur.username,i);
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  var cfg=cfgs[i];if(!cfg)return;
+  types=cfg.types||[];colors=cfg.colors||[];
+  saveCfgToCur();rt();rc();alert('已切换到：'+cfg.name)
+}
+function saveCfg(){
+  saveCfgToCur();rt();rc();alert('配置已保存')
+}
+function addCfg(){
+  var n=document.getElementById('newCfgName').value.trim();
+  if(!n){alert('请输入配置名');return}
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  cfgs.push({name:n,types:JSON.parse(JSON.stringify(types)),colors:JSON.parse(JSON.stringify(colors))});
+  S('w_cfgs_'+cur.username,cfgs);
+  S('w_cfgIdx_'+cur.username,cfgs.length-1);
+  document.getElementById('newCfgName').value='';
+  rcfg();rt();rc();alert('已创建：'+n)
+}
+function delCfg(){
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  if(cfgs.length<=1){alert('至少保留一个配置');return}
+  var ci=parseInt(L('w_cfgIdx_'+cur.username,'0'))||0;
+  var n=cfgs[ci].name;
+  if(!confirm('删除配置 "'+n+'"？'))return;
+  cfgs.splice(ci,1);S('w_cfgs_'+cur.username,cfgs);
+  S('w_cfgIdx_'+cur.username,0);
+  var cfg=cfgs[0];types=cfg.types||[];colors=cfg.colors||[];
+  rcfg();rt();rc();alert('已删除')
+}
+function expCfg(){
+  var cfgs=L('w_cfgs_'+cur.username,[]);
+  var blob=new Blob([JSON.stringify(cfgs,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.download='报价配置_'+new Date().toLocaleDateString().replace(/\//g,'-')+'.json';
+  a.href=URL.createObjectURL(blob);a.click()
+}
+function impCfg(){document.getElementById('cfgFileInput').click()}
+function impCfgFile(inp){
+  var f=inp.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      if(!Array.isArray(d)){alert('格式错误，需要配置数组');return}
+      if(!confirm('导入 '+d.length+' 个配置，覆盖当前？'))return;
+      S('w_cfgs_'+cur.username,d);S('w_cfgIdx_'+cur.username,0);
+      var cfg=d[0];types=cfg.types||[];colors=cfg.colors||[];
+      rcfg();rt();rc();alert('导入成功！')
+    }catch(e){alert('文件格式错误')}
+  };r.readAsText(f);inp.value=''
+}
 function saveTitle(){title=document.getElementById('setTitle').value.trim()||'门窗报价表';pushAll();document.getElementById('topTitle').textContent=title;alert('已保存')}
 function changePwd(){var a=document.getElementById('setPwd1').value,b=document.getElementById('setPwd2').value;if(!a||a.length<4){alert('密码至少4位');return}if(a!==b){alert('两次不一致');return}var i=users.findIndex(function(x){return x.username==='admin'});if(i>-1)users[i].password=a;pushAll(function(){document.getElementById('setPwd1').value='';document.getElementById('setPwd2').value='';alert('密码已修改')})}
 function togglePwd(){var inp=document.getElementById('loginPwd');var btn=document.getElementById('eyeBtn');if(inp.type==='password'){inp.type='text';btn.textContent='🙈'}else{inp.type='password';btn.textContent='👁️'}}
