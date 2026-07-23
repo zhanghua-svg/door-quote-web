@@ -84,9 +84,6 @@ table tr:nth-child(even){background:#fafbfc}
 .a4-page .footer{margin-top:10px;font-size:11px;color:#555;line-height:1.8}
 .a4-page .footer .sign{display:flex;justify-content:space-between;margin-top:8px}
 .a4-page .footer .sign span{flex:1;text-align:center}
-.a4-page .note-row{display:flex;align-items:center;margin:1px 0}
-.a4-page .note-row span{flex-shrink:0;font-weight:600;margin-right:4px}
-.a4-page .note-row input{background:transparent;border:none;width:95%;font-size:11px;padding:2px}
 
 @media print{
   body{background:#fff}
@@ -139,6 +136,7 @@ table tr:nth-child(even){background:#fafbfc}
     <div id="tab-detail" class="hidden" style="background:#e8e8e8;min-height:100vh;padding:20px 12px">
       <div style="max-width:210mm;margin:0 auto 8px;display:flex;justify-content:flex-end;gap:8px">
         <button class="btn btn-blue btn-sm" onclick="printQuote()">🖨️ 打印/导出PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="exportImage()">🖼️ 导出图片</button>
         <button class="btn btn-outline btn-sm" onclick="saveQuote()">💾 保存</button>
         <button class="btn btn-gray btn-sm" onclick="switchTab('quote',document.querySelector('.menu span'))">↩ 返回</button>
       </div>
@@ -158,7 +156,7 @@ table tr:nth-child(even){background:#fafbfc}
         <div class="row"><span>预付定金：<input id="dPrepay" placeholder="            " style="border:none;width:110px;font-size:11px"></span><span>尾款：<input id="dRest" placeholder="            " style="border:none;width:110px;font-size:11px"></span></div>
         <div style="margin-top:4px"><span>付款方式：</span></div>
         <div class="pay-row"><label><input type="checkbox">现金</label><label><input type="checkbox">刷卡</label><label><input type="checkbox">支票</label><label><input type="checkbox">微信/支付宝</label><label><input type="checkbox">银行卡转账</label><label><input type="checkbox">其他</label></div>
-        <div class="footer"><div><b>备注：</b></div><div id="dNotes"></div>
+        <div class="footer">
           <div class="sign"><span>客户确认：<input placeholder="客户签字" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>制单：<input id="dMaker" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>日期：<input id="dDate2" style="border:none;width:90px;font-size:11px;text-align:center"></span></div>
         </div>
       </div>
@@ -338,16 +336,21 @@ function genQuote(){if(!rows.length){alert('请添加产品');return}
   localStorage.setItem('w_printQuote',JSON.stringify(q));
   window.open('/door-quote-web/quote-print.html','_blank')
 }
-function loadNotes(){
-  var notes=L('w_notes_'+cur.username,['以上报价不含税，如需开票加收6%税金。','产品质保5年，人为损坏不在质保范围内。','确认下单后预付50%定金，尾款安装验收后付清。','生产周期15-20个工作日，特殊情况另行通知。','本报价单有效期为30天。']);
-  var admin=cur&&cur.role==='admin';
-  document.getElementById('dNotes').innerHTML=notes.map(function(n,i){
-    if(admin)return'<div class="note-row"><span>'+(i+1)+'.</span><input value="'+es(n)+'" onchange="saveNote('+i+',this.value)" style="border:none;width:95%;font-size:11px;padding:2px;background:transparent"></div>';
-    return'<div class="note-row"><span>'+(i+1)+'.</span><span style="font-size:11px">'+es(n)+'</span></div>'
-  }).join('')+(admin?'<div class="note-row"><span>'+(notes.length+1)+'.</span><input value="" placeholder="可自行添加" onchange="saveNote('+notes.length+',this.value)" style="border:none;width:95%;font-size:11px;padding:2px;background:transparent"></div>':'')
-}
-function saveNote(i,v){if(cur.role!=='admin')return;var notes=L('w_notes_'+cur.username,[]);notes[i]=v;S('w_notes_'+cur.username,notes)}
 function printQuote(){window.print()}
+function exportImage(){
+  var el=document.getElementById('printArea');
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+el.offsetWidth+'" height="'+el.offsetHeight+'"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:PingFang SC,Microsoft YaHei,sans-serif;font-size:12px;color:#222">'+el.innerHTML+'</div></foreignObject></svg>';
+  var blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var img=new Image();
+  img.onload=function(){
+    var c=document.createElement('canvas');c.width=el.offsetWidth*2;c.height=el.offsetHeight*2;
+    var ctx=c.getContext('2d');ctx.scale(2,2);ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+    ctx.drawImage(img,0,0);URL.revokeObjectURL(url);
+    var a=document.createElement('a');a.download='报价单_'+new Date().toLocaleDateString().replace(/\//g,'-')+'.png';
+    a.href=c.toDataURL('image/png');a.click()
+  };img.src=url
+}
 function cnyUpper(n){
   var digits='零壹贰叁肆伍陆柒捌玖';var units=['','拾','佰','仟','万','拾','佰','仟','亿'];
   var s=String(Math.round(n*100));var p=s.length-2;
