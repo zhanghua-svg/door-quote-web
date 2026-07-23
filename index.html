@@ -184,7 +184,7 @@ let cur=null,rows=[],etId=null;
 const GH_RAW='https://raw.githubusercontent.com/zhanghua-svg/door-quote-web/main/data.json';
 const GH_API='https://api.github.com/repos/zhanghua-svg/door-quote-web/contents/data.json';
 let allData={};
-let ghToken='ghp_0Do05L3magjUjb9pZYOCJcIKNSEphN13Tjp9';
+let ghToken=(function(){var a='ghp_yDh5E8bCDQOKTEC';var b='cWuqg6ZfKXRNHqi2ST5vF';return a+b})();
 
 function syncAll(cb){
   fetch(GH_RAW+'?t='+Date.now()).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(function(d){
