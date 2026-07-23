@@ -26,8 +26,6 @@ table th{background:#f0f0f0;font-weight:600}
 .footer{margin-top:10px;font-size:11px;color:#555;line-height:1.8}
 .footer .sign{display:flex;justify-content:space-between;margin-top:8px}
 .footer .sign span{flex:1;text-align:center}
-.note-row{display:flex;align-items:center;margin:1px 0}
-.note-row span{flex-shrink:0;font-weight:600;margin-right:4px}
 @media print{body{background:#fff;padding:0}.page{box-shadow:none;width:100%;min-height:auto}.toolbar{display:none}}
 </style>
 </head>
@@ -44,7 +42,7 @@ table th{background:#f0f0f0;font-weight:600}
   <div style="margin:8px 0"><span>预付定金：<input placeholder="            " style="border:none;width:110px;font-size:11px"></span><span>尾款：<input placeholder="            " style="border:none;width:110px;font-size:11px"></span></div>
   <div>付款方式：</div>
   <div class="pay-row"><label><input type="checkbox">现金</label><label><input type="checkbox">刷卡</label><label><input type="checkbox">支票</label><label><input type="checkbox">微信/支付宝</label><label><input type="checkbox">银行卡转账</label><label><input type="checkbox">其他</label></div>
-  <div class="footer"><div><b>备注：</b></div><div id="pNotes"></div>
+  <div class="footer">
     <div class="sign"><span>客户确认：<input placeholder="客户签字" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>制单：<input id="pMaker" style="border:none;width:80px;font-size:11px;text-align:center"></span><span>日期：<input id="pDate2" style="border:none;width:90px;font-size:11px;text-align:center"></span></div>
   </div>
 </div>
@@ -64,8 +62,6 @@ if(!q.title){document.getElementById('pTitle').textContent='门窗报价表';doc
   document.getElementById('pSub').textContent='¥'+fm(q.subtotal||0);
   document.getElementById('pTotal').textContent='¥'+fm(q.finalTotal||0);
   document.getElementById('pUpper').textContent=cny(q.finalTotal||0);
-  var notes=['以上报价不含税，如需开票加收6%税金。','产品质保5年，人为损坏不在质保范围内。','确认下单后预付50%定金，尾款安装验收后付清。','生产周期15-20个工作日，特殊情况另行通知。','本报价单有效期为30天。'];
-  document.getElementById('pNotes').innerHTML=notes.map(function(n,i){return'<div class="note-row"><span>'+(i+1)+'.</span><span style="font-size:11px">'+es(n)+'</span></div>'}).join('');
 }
 function cny(n){
   var d='零壹贰叁肆伍陆柒捌玖',u=['','拾','佰','仟','万','拾','佰','仟','亿'];
